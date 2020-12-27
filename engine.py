@@ -36,7 +36,6 @@ class thread_with_trace(threading.Thread):
         self.killed = True
 
 
-
 def update_clock(board, label,time, turn_time,player,root):
     
     if not board.game_ended:
@@ -63,38 +62,42 @@ def startGame(root,board,gui):
             PLAYER_1 = board.PLAYER_1
             PLAYER_2 = board.PLAYER_2
 
-            if PLAYER_1 > 1 and color=="white":
+            if PLAYER_1 != 'Human' and color=="white":
                 board.engine_is_selecting = True
                 t = None
                 #print("Engine starts now:")
 
-                if PLAYER_1 == 2:
-                    t = thread_with_trace(target = MrRandom().generate_next_move, args=(gui,))
-                elif PLAYER_1 == 3:
-                    t = thread_with_trace(target = MrNovice().generate_next_move, args=(gui,))
-                elif PLAYER_1 == 4:
-                    t = thread_with_trace(target = MrExpert().generate_next_move, args=(gui,))
-                elif PLAYER_1 == 5:
-                    t = thread_with_trace(target = MrCustom().generate_next_move, args=(gui,))
+                if PLAYER_1 == 'MrRandom':
+                    t = thread_with_trace(target = eval(PLAYER_1)().generate_next_move, args=(gui,))
+                elif PLAYER_1 == 'MrNovice':
+                    t = thread_with_trace(target = eval(PLAYER_1 + "('white')").generate_next_move, args=(gui,))
+                elif PLAYER_1 == 'MrExpert':
+                    t = thread_with_trace(target = eval(PLAYER_1)().generate_next_move, args=(gui,))
+                elif PLAYER_1 == 'Student':
+                    t = thread_with_trace(target = eval(PLAYER_1)().generate_next_move, args=(gui,))
+                else:
+                    t = thread_with_trace(target = eval(PLAYER_1)().generate_next_move, args=(gui,))
 
                 gui.current_engine_thread = t
                 t.start()
                 #print("thread white started:")
 
 
-            elif PLAYER_2 > 1 and color=="black":
+            elif PLAYER_2 != 'Human' and color=="black":
                 board.engine_is_selecting = True
                 t = None
                 #print("Engine starts now:")
 
-                if PLAYER_2 == 2:
-                    t = thread_with_trace(target = MrRandom().generate_next_move, args=(gui,))
-                elif PLAYER_2 == 3:
-                    t = thread_with_trace(target = MrNovice().generate_next_move, args=(gui,))
-                elif PLAYER_2 == 4:
-                    t = thread_with_trace(target = MrExpert().generate_next_move, args=(gui,))
-                elif PLAYER_2 == 5:
-                    t = thread_with_trace(target = MrCustom().generate_next_move, args=(gui,))
+                if PLAYER_2 == 'MrRandom':
+                    t = thread_with_trace(target = eval(PLAYER_2)().generate_next_move, args=(gui,))
+                elif PLAYER_2 == 'MrNovice':
+                    t = thread_with_trace(target = eval(PLAYER_2 + "('black')").generate_next_move, args=(gui,))
+                elif PLAYER_2 == 'MrExpert':
+                    t = thread_with_trace(target = eval(PLAYER_2)().generate_next_move, args=(gui,))
+                elif PLAYER_2 == 'Student':
+                    t = thread_with_trace(target = eval(PLAYER_2)().generate_next_move, args=(gui,))
+                else:
+                    t = thread_with_trace(target = eval(PLAYER_2)().generate_next_move, args=(gui,))
   
                 gui.current_engine_thread = t
                 t.start()
@@ -112,7 +115,6 @@ def stopClock(root,board,gui):
             gui.current_engine_thread = None
             #print("thread was killed.")
 
-        print(board.player_turn," chose move: ", board.next_move)
         if board.player_turn == "white" and board.PLAYER_1 == 1 or board.player_turn == "black" and board.PLAYER_2 == 1:
             print("Timeout with no valid move: ", board.get_enemy(board.player_turn), " won!")
             gui.label.configure(text="Timeout with no valid move: " + board.get_enemy(board.player_turn) + " won!")
@@ -120,11 +122,14 @@ def stopClock(root,board,gui):
         else:
             if (board.next_move is not None):
                 gui.perform_move()
+                root.after(1000, stopClock, root, board,gui)
             else:
                 print("Timeout with no valid move: ", board.get_enemy(board.player_turn), " won!")
                 gui.label.configure(text="Timeout with no valid move: " + board.get_enemy(board.player_turn) + " won!")
                 board.end_game(gui)
-
-            board.engine_is_selecting = False
+                
+        board.engine_is_selecting = False
+    
     else:
         root.after(200, stopClock, root, board,gui)
+

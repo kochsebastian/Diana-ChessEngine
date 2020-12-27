@@ -12,8 +12,6 @@ def display(chessboard,turn_time):
     gui = BoardGuiTk(root, chessboard)
     gui.pack(side="top", fill="both", expand="true", padx=4, pady=4)
     gui.draw_pieces()
-
-    #root.resizable(0,0)
     label = tk.Label(text="")
     label.pack()
     gui.label = label
@@ -21,9 +19,6 @@ def display(chessboard,turn_time):
     stopClock(root,chessboard,gui)
     startGame(root,chessboard,gui)
     root.mainloop()
-
-
-# # Start Diana Chess (if weird errors occurs, simply restart kernel and run all)
 
 # 1 = Human
 # 2 = Mr. Random 
@@ -44,36 +39,40 @@ if __name__ == "__main__":
     for opt, arg in opts:
         if opt == '-w':
             if arg == 'Human':
-                PLAYER_1 = 1
+                PLAYER_1 = arg
             elif arg == 'MrRandom':
-                PLAYER_1 = 2
+                PLAYER_1 = arg
             elif arg == 'MrNovice':
-                PLAYER_1 = 3
+                PLAYER_1 = arg
             elif arg == 'MrExpert':
-                PLAYER_1 = 3
+                PLAYER_1 = arg
             elif arg == 'Student':
-                PLAYER_1 = 5
+                PLAYER_1 = arg
             else:
-                PLAYER_1 = 1
-                print('Selecting human as white player.')
-                print('Please give one of the following arguments for white player:'
-                      '\nHuman\nMrRandom\nMrNovice\nMrExpert\nStudent')
+                PLAYER_1 = arg
+            # else:
+            #     PLAYER_1 = 1
+            #     print('Selecting human as white player.')
+            #     print('Please give one of the following arguments for white player:'
+            #           '\nHuman\nMrRandom\nMrNovice\nMrExpert\nStudent')
         elif opt == '-b':
             if arg == 'Human':
-                PLAYER_2 = 1
+                PLAYER_2 = arg
             elif arg == 'MrRandom':
-                PLAYER_2 = 2
+                PLAYER_2 = arg
             elif arg == 'MrNovice':
-                PLAYER_2 = 3
+                PLAYER_2 = arg
             elif arg == 'MrExpert':
-                PLAYER_2 = 3
+                PLAYER_2 = arg
             elif arg == 'Student':
-                PLAYER_2 = 5
+                PLAYER_2 = arg
             else:
-                PLAYER_2 = 1
-                print('Selecting human as black player.')
-                print('Please give one of the following arguments for black player:'
-                      '\nHuman\nMrRandom\nMrNovice\nMrExpert\nStudent')
+                PLAYER_2 = arg
+            # else:
+            #     PLAYER_2 = 1
+            #     print('Selecting human as black player.')
+            #     print('Please give one of the following arguments for black player:'
+            #           '\nHuman\nMrRandom\nMrNovice\nMrExpert\nStudent')
         elif opt == '-t':
             TURN_TIME = int(arg)
     

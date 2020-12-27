@@ -74,8 +74,8 @@ class BoardGuiTk(tk.Frame):
         
         if not self.chessboard.game_ended:
 
-            if ((self.chessboard.player_turn == "white" and self.chessboard.PLAYER_1 == 1) or
-               (self.chessboard.player_turn == "black" and self.chessboard.PLAYER_2 == 1)):
+            if ((self.chessboard.player_turn == "white" and self.chessboard.PLAYER_1==1) or
+               (self.chessboard.player_turn == "black" and self.chessboard.PLAYER_2==1)):
                 # Figure out which square we've clicked
                 col_size = row_size = event.widget.master.square_size
 
@@ -238,11 +238,3 @@ class BoardGuiTk(tk.Frame):
                 board.pprint()
                 #print(self.get_enemy(self.player_turn), ": ", movetext, "\n\n")
                 board.next_move = None
-
-
-
-    
-    
-    
-    
-    

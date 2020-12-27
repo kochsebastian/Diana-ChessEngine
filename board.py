@@ -4,8 +4,6 @@ import math
 import re
 from pieces import *
 
-#!/usr/bin/env python
-
 
 # Board width and height
 BOARD_SIZE = 6
@@ -30,19 +28,16 @@ class Board(dict):
 
     '''
     
+    board_states = []
+    
     # both axes of the board
     axis_y = tuple([chr(ord('A')+i) for i in range(BOARD_SIZE)])
     axis_x = tuple(range(1,BOARD_SIZE+1)) # (1,2,3,...8)
 
-    captured_pieces = { 'white': [], 'black': [] }
     player_turn = None
-    castling = '-'
-    en_passant = '-'
-    halfmove_clock = 0
     
     # counting the moves (1 move = white and black have moved)
     fullmove_number = 1
-    history = []
     
     # this is where the move that the agent updates is saved
     next_move = None
@@ -56,8 +51,6 @@ class Board(dict):
     PLAYER_1 = None
     PLAYER_2 = None
     
-    previous_move = None
-    
     # flag to check end of the game (avoid user or engine input after game end)
     game_ended = False
 
@@ -65,7 +58,10 @@ class Board(dict):
     # --------------------------------Most important methods (functionality, evaluation of board)--------------------------------
     
     
-    
+    # Does not return timer
+    # Returns state variables for copying
+    def get_current_state(self):
+        return self.player_turn, self.fullmove_number
     
     # ---------------------------------------functionality
     
@@ -73,6 +69,7 @@ class Board(dict):
     # gui only used for output
     
     def move(self, p1, p2, gui=None):
+        
         #print(p1)
         #print(p2)
         p1, p2 = p1.upper(), p2.upper()
@@ -100,7 +97,7 @@ class Board(dict):
 
         #print(p1,p2)
         self._do_move(p1, p2)
-        self._finish_move(piece, dest, p1,p2)
+        self.switch_players()
         
         game_ends = self.check_winning_condition(piece.color,True,True,gui)
         
@@ -125,6 +122,7 @@ class Board(dict):
         
         print("\n")
         
+        
         col = BOARD_SIZE
         row = BOARD_SIZE
         
@@ -134,7 +132,9 @@ class Board(dict):
             #print(coord)
             
             if col == 0:
+                
                 print(row_placement)
+                
                 col = BOARD_SIZE
                 row -= 1
                 row_placement = str(row)+" "
@@ -150,23 +150,81 @@ class Board(dict):
                 
             col -= 1
             
-        print(row_placement)
+        print(row_placement)      
         
         letters = [chr(ord('A')+i) for i in range(BOARD_SIZE)]
         last_row = "  "
         for letter in letters:
             last_row += " "+letter+" "
         print(last_row)
-        
         print("\n")
+        
+    def to_string(self):
+        
+        state = ""
+        
+        state += "\n"
+        
+        
+        col = BOARD_SIZE
+        row = BOARD_SIZE
+        
+        row_placement = str(row)+" "
+        for coord in self.keys():
+            
+            #print(coord)
+            
+            if col == 0:
+                
+                state += row_placement
+                state += "\n"
+                
+                col = BOARD_SIZE
+                row -= 1
+                row_placement = str(row)+" "
+                
+            piece = self[coord]
+            
+            if piece is not None:
+                color = piece.color
+                fig = piece.abbriviation
+                row_placement += "["+ fig +"]"
+            else:
+                row_placement += "["+ " " + "]"
+                
+            col -= 1
+            
+        state += row_placement
+        state += "\n"
+                
+        
+        
+        letters = [chr(ord('A')+i) for i in range(BOARD_SIZE)]
+        last_row = "  "
+        for letter in letters:
+            last_row += " "+letter+" "
+
+        state += last_row
+        state += "\n"
+        
+        return state
+    
+    def switch_players(self):
+        color = self.player_turn
+        enemy = self.get_enemy(color)
+        if color == 'black':
+            self.fullmove_number += 1
+        self.player_turn = enemy
         
     def _do_move(self, p1, p2):
         
         '''
             Move a piece without validation
         '''
+        
         piece = self[p1]
         dest  = self[p2]
+        
         self[p1] = None
         self[p2] = piece
         
@@ -181,35 +239,25 @@ class Board(dict):
         
 
 
-    def _finish_move(self, piece, dest, p1, p2):
+    def generate_move_text(self, p1, p2):
         '''
             Set next player turn, count moves, log moves, etc.
         '''
-        enemy = self.get_enemy(piece.color)
-        if piece.color == 'black':
-            self.fullmove_number += 1
-        self.halfmove_clock +=1
-        self.player_turn = enemy
-        abbr = piece.abbriviation
+        
+        _from = self[p1]
+        _to = self[p2]
+        
+        abbr = _from.abbriviation
         if abbr == 'P':
             # Pawn has no letter
             abbr = ''
-            # Pawn resets halfmove_clock
-            self.halfmove_clock = 0
-        if dest is None:
+        if _to is None:
             # No capturing
             movetext = abbr +  p2.lower()
         else:
             # Capturing
             movetext = abbr + 'x' + p2.lower()
-            # Capturing resets halfmove_clock
-            self.halfmove_clock = 0
-
-        self.history.append(movetext)
-        
-        #self.pprint()
-        #print(self.get_enemy(self.player_turn), ": ", movetext, "\n\n")
-    
+            
     def get_time_left(self):
         return self.timer
     
@@ -243,6 +291,7 @@ class Board(dict):
         return res
 
     def is_in_check_after_move_filter(self,moves):
+        
         filtered = []
 
         for m in moves:
@@ -261,7 +310,8 @@ class Board(dict):
             
         return filtered
     
-    def check_winning_condition(self,color,end_game=False,print_result=False,gui = None):        
+    def check_winning_condition(self,color,end_game=False,print_result=False,gui = None):
+        
         enemy = self.get_enemy(color)
         if self.is_in_checkmate(enemy):
             if print_result:
@@ -532,10 +582,7 @@ class Board(dict):
                     self[coord].place(self)
 
         self.player_turn = 'white'
-        
-        self.castling = "-"
-        self.en_passant = "-"
-        self.halfmove_clock = 0
+
         self.fullmove_number = 1   
 
 #---------------------------------------------------------------------------------------------------
@@ -544,4 +591,6 @@ class Board(dict):
 
     
 #------------------------------------------------------------------------------------------------------------------
+
+
 

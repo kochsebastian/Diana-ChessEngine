@@ -3,7 +3,11 @@ import random
 import math
 from copy import deepcopy, copy
 from studentagent import *
-from pieces import *
+from NegaMaxMoveAgent import *
+from MiniMaxAgent import *
+from PVS import *
+from MiniMaxTransposition import *
+
 
 class MrRandom:
     
@@ -24,9 +28,10 @@ class MrRandom:
         
 class MrNovice:
 
-    def __init__(self,delay=0, threshold=5):
+    def __init__(self,color,delay=0, threshold=5):
         self.delay = delay
         self.TIME_THRESHOLD = threshold
+        self.color = color
     
     def evaluateGame(self,board, player_wins, enemy_wins):
         #print("Evaluation of board started.")
@@ -34,13 +39,12 @@ class MrNovice:
         
         SCORE_PAWN   = 10
         SCORE_ROOK   = 50
-        SCORE_BISHOP = 50
-        SCORE_KNIGHT = 50
-        SCORE_QUEEN  = 200
+        SCORE_BISHOP = 30
+        SCORE_KNIGHT = 30
         
-        SCORE_CHECK     = 20
+        SCORE_CHECK     = 5
         
-        color = board.player_turn
+        color = self.color
         score = 0
 
         #print("Check winning")
@@ -51,7 +55,6 @@ class MrNovice:
             return -SCORE_WIN
         t2 = time.time()
         #print("Checking winning in evaluation: ", t2-t1)
-        
         
         #print("Is in Check")
         t1 = time.time()
@@ -72,13 +75,14 @@ class MrNovice:
                 fig_color = board[coord].color
             
                 figurescore = 0
-                if figure.abbriviation=='p':
+                fig_name = (figure.abbriviation).lower() 
+                if fig_name == 'p':
                     figurescore = SCORE_PAWN
-                elif figure.abbriviation=='r':
+                elif fig_name=='r':
                     figurescore = SCORE_ROOK
-                elif figure.abbriviation=='b':
+                elif fig_name=='b':
                     figurescore = SCORE_BISHOP
-                elif figure.abbriviation=='n':
+                elif fig_name=='n':
                     figurescore = SCORE_KNIGHT
 
                 if fig_color == color:
@@ -90,14 +94,13 @@ class MrNovice:
         #print("Checking Score Calc in evaluation: ", t2-t1)            
         
         #print("Evaluation of board ended.")
-        
         return score
 
     def generate_next_move(self,gui):
         
         #print("Next move will now be generated:")
         
-        board = gui.chessboard
+        board = deepcopy(gui.chessboard)
         
         search_depth = 2
         maxscore = -math.inf
@@ -110,40 +113,63 @@ class MrNovice:
         
         if len(moves) > 0:
             # always have one move to to
-            board.update_move(moves[0])
+            gui.chessboard.update_move(moves[0])
 
 
             #print("We will test ", len(moves), " main moves.")
             for m in moves:
-                board_copy = deepcopy(board)
-                board_copy._do_move(m[0],m[1])
 
-                board_copy.player_turn = board_copy.get_enemy(board_copy.player_turn)
+                
+                # COPY
+                _from_fig = board[m[0]]
+                _to_fig = board[m[1]]
+                player, move_number = board.get_current_state()        
+
+                # PERFORM
+                board._do_move(m[0],m[1])
+                board.switch_players()
 
                 #print("We test main move: ", m, " and the board looks like this:")
                 #board_copy.pprint()
                 #print("Main move test start.")
-                score = self.min_func(board,board_copy, search_depth)
-                #print("Main move test end.")
+                
+                #board.board_states.append(board.to_string())
+                
+                score = self.min_func(gui.chessboard,board, search_depth)
+                """
+                print("\n\n----------------------\n\n")
+                print("Main move " + "(" +m[0] + ", " + m[1] + ")" + " with score " + str(score) + " test end.\n\n")
+                for state in board.board_states:
+                    print(state)
+                print("\n\n----------------------\n\n")
+                board.board_states.pop()
+                """
 
+
+                 # RESET
+                board[m[0]] = _from_fig
+                board[m[1]] = _to_fig
+                board.player_turn = player
+                board.fullmove_number = move_number 
+                
                 if score > maxscore:
                     maxscore = score
                     bestmoves.clear()
                     bestmoves.append(m)
-                    board.update_move(m)
+                    gui.chessboard.update_move(m)
                 elif score == maxscore:
                     bestmoves.append(m)
 
             bestmove = bestmoves[random.randint(0,len(bestmoves)-1)]
-            board.update_move(bestmove)
+            gui.chessboard.update_move(bestmove)
             gui.perform_move()
-        board.engine_is_selecting = False
+        gui.chessboard.engine_is_selecting = False
         
     
 
     def min_func(self,original_board,board,depth):
         
-        color = board.player_turn
+        color = self.color
         
         player_wins = board.check_winning_condition(color)
         enemy_wins = board.check_winning_condition(board.get_enemy(color))
@@ -158,12 +184,33 @@ class MrNovice:
         minscore = math.inf
 
         for m in moves:
-            board_copy = deepcopy(board)
-            board_copy._do_move(m[0],m[1])
+            # COPY
+            _from_fig = board[m[0]]
+            _to_fig = board[m[1]]
+            player, move_number = board.get_current_state()        
 
-            board_copy.player_turn = board_copy.get_enemy(board_copy.player_turn)
+            # PERFORM
+            board._do_move(m[0],m[1])
+            board.switch_players()
             
-            score = 0.99 * self.max_func(original_board,board_copy, depth - 1)
+            #board.board_states.append(board.to_string())
+            
+            score = 0.99 * self.max_func(original_board,board, depth - 1)
+
+            """
+            print("\n\n----------------------\n\n")
+            print("Score for this move sequence is: ", score)
+            for state in board.board_states:
+                print(state)
+            print("\n\n----------------------\n\n")
+            board.board_states.pop()
+            """
+            
+            # RESET
+            board[m[0]] = _from_fig
+            board[m[1]] = _to_fig
+            board.player_turn = player
+            board.fullmove_number = move_number 
 
             if score < minscore:
                 minscore = score
@@ -172,7 +219,7 @@ class MrNovice:
     
     def max_func(self,original_board,board,depth):
         
-        color = board.player_turn
+        color = self.color
         
         player_wins = board.check_winning_condition(color)
         enemy_wins = board.check_winning_condition(board.get_enemy(color))
@@ -187,16 +234,35 @@ class MrNovice:
         maxscore = -math.inf
 
         for m in moves:
-            board_copy = deepcopy(board)
-            board_copy._do_move(m[0],m[1])
+            # COPY
+            _from_fig = board[m[0]]
+            _to_fig = board[m[1]]
+            player, move_number = board.get_current_state()        
 
-            board_copy.player_turn = board_copy.get_enemy(board_copy.player_turn)
+            # PERFORM
+            board._do_move(m[0],m[1])
+            board.switch_players()
             
-            score = 0.99 * self.min_func(original_board,board_copy, depth - 1)
+            #board.board_states.append(board.to_string())
+            
+            score = 0.99 * self.min_func(original_board,board, depth - 1)
+            
+            """
+            print("\n\n----------------------\n\n")
+            print("Score for this move sequence is: ", score)
+            for state in board.board_states:
+                print(state)
+            print("\n\n----------------------\n\n")
+            board.board_states.pop()
+            """
+            
+            # RESET
+            board[m[0]] = _from_fig
+            board[m[1]] = _to_fig
+            board.player_turn = player
+            board.fullmove_number = move_number 
 
-            if score < maxscore:
+            if score > maxscore:
                 maxscore = score
                 
         return maxscore
-
-

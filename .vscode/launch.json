@@ -5,12 +5,13 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Dianachess",
+            "name": "dianachess",
             "type": "python",
             "request": "launch",
             "program": "dianachess.py",
             "console": "integratedTerminal",
-            "args": ["-w","Student","-b","MrNovice","-t","30"]
+            "args": ["-w","MiniMaxTransposition","-b","MrNovice","-t","40"]
+
         }
     ]
 }
