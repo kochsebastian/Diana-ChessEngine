@@ -57,8 +57,8 @@ piece_values = {    'p': SCORE_PAWN,
 pawn_square_table = [   [0,0,0,0,0,0],
                         [50,50,50,50,50,50],
                         [20,20,30,30,20,20],
-                        [15,0,20,15,5,0],
-                        [5,10,-20,-10,10,5],
+                        [15,0,20,20,5,5],
+                        [5,10,-20,-20,10,5],
                         [0,0,0,0,0,0]]
 
 knight_square_table = [ [-50,-40,-30,-30,-40,-50],
@@ -116,6 +116,9 @@ class SuperAgent:
         self.hash_precision=18
         self.time_up=False
         self.connected_rooks = []
+        self.max_depth = 12
+        self.check_mate_in_ = self.max_depth
+        
         
 
         # time.sleep(20)
@@ -191,7 +194,7 @@ class SuperAgent:
 
         score +=w_check*self.check_score(board,color)
         if score != 0:
-            score+=w_checkmate*self.checkmate_score(board,color)
+            return w_checkmate*self.checkmate_score(board,color)
         tock = time.time()
         # print(f"Eval checkmate: {tock-tick}s")
 
@@ -305,7 +308,7 @@ class SuperAgent:
     def pawn_sructure_score(self,board,pawns):
         pass
     def connected_rooks_score(self,board,piece):
-        if piece.abbriviation.lower() = 'r':
+        if piece.abbriviation.lower() == 'r':
             pass
         pass
 

@@ -26,15 +26,14 @@ class NegaMaxTransposition(SuperAgent):
     def generate_next_move(self,gui):
         board = gui.chessboard
         self.board = gui.chessboard
-        print(self.build_fen(board))
-        # fen = 'rbnk-r/pPp-pp/--bp--/----P-/-PPP-P/RBNKBR white'
+        # print(self.build_fen(board))
+        # fen = 'k---r-/P-B-R-/-PKP--/------/-P---R/------ white'
         # self.set_fen(self.board,fen)
         self.copy_board = deepcopy(self.board)
         self.color = board.player_turn
         # time.sleep(3)
-        maxDepth = 10
         bestmoves = []
-        for i in range(1,maxDepth):
+        for i in range(1,self.max_depth):
             # i=4
             print(f"Depth {i}")
             self.depth = i
@@ -43,8 +42,12 @@ class NegaMaxTransposition(SuperAgent):
                 bestmoves=new_bestmoves
             else:
                 break
+            if bestmoves[0][0]>=self.score_checkmate:
+                break
             # break
-        score,bestmove = bestmoves[0]
+        score,bestmove = 0,None
+        if len(bestmoves)>0:
+            score,bestmove = bestmoves[0]
         board.update_move(bestmove)
         gui.perform_move()
         board.engine_is_selecting = False
@@ -67,7 +70,7 @@ class NegaMaxTransposition(SuperAgent):
             board = self.undo_move(board,m,before)
             if self.time_up:
                 return bestmoves
-            if len(bestmoves) == 0:
+            elif len(bestmoves) == 0:
                 bestmoves.append((score,m))
                 alpha = score
                 print(f"New bestmove {m} with score {score}")
@@ -76,6 +79,8 @@ class NegaMaxTransposition(SuperAgent):
                 print(f"New bestmove {m} with score {score}")
                 if score > alpha :
                     alpha = score
+            elif score >= self.score_checkmate:
+                return bestmoves                
             else:
                 print(f"Move {m} is not better")
                 bestmoves.append((score,m))
@@ -121,23 +126,16 @@ class NegaMaxTransposition(SuperAgent):
         moves = board.generate_valid_moves(board.player_turn)
         sorted_moves = self.sort_moves(moves,board,transposition_table=transposition_table,killer_moves=killer_moves,depth=depthleft)
         if len(sorted_moves)==0:
-            return -self.score_checkmate*(self.depth-depthleft)
+            return -self.score_checkmate*(self.depth-depthleft+1)
         score =-9999999
         killer = None
         for m in sorted_moves:
             board,before = self.do_move(board,m)
             score = max(score,-self.negaMax_lookup(orig_board,board, -beta, -alpha, depthleft - 1 ,last_move=m))
             board = self.undo_move(board,m,before)
-            # if( score >= beta ):
-            #     return score
-            # if( score > bestscore ):
-            #     bestscore = score
-            #     if score>alpha:
-            #         alpha = score
             if( score > alpha ):
                 alpha = score
                 killer = m
-            # alpha = max(alpha,score)
             if( alpha >= beta ):
                 if before[-1]==None:
                     if killer != None:

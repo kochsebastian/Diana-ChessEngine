@@ -108,9 +108,8 @@ class PVS(SuperAgent):
         self.color = board.player_turn
         # self.score_origBoard = self.evaluateGame(self.board)
         # time.sleep(3)
-        maxDepth = 10
         bestmoves = []
-        for i in range(1,maxDepth):
+        for i in range(1,self.max_depth):
             # i=4
             print(f"Depth {i}")
             self.depth = i
@@ -119,8 +118,12 @@ class PVS(SuperAgent):
                 bestmoves=new_bestmoves
             else:
                 break
+            if bestmoves[0][0]>=self.score_checkmate:
+                break
             # break
-        score,bestmove = bestmoves[0]
+        score,bestmove = 0,None
+        if len(bestmoves)>0:
+            score,bestmove = bestmoves[0]
         board.update_move(bestmove)
         gui.perform_move()
         board.engine_is_selecting = False
@@ -144,7 +147,7 @@ class PVS(SuperAgent):
         if bestscore > alpha :
             alpha = bestscore
         bestmoves.append((bestscore,m))
-        if bestscore > self.score_checkmate:
+        if bestscore >= self.score_checkmate:
             return bestmoves
         print(f"New bestmove {m} with score {bestscore}")
         for m in moves:
@@ -169,6 +172,8 @@ class PVS(SuperAgent):
             elif score > bestmoves[0][0]:
                 bestmoves.insert(0,(score,m))
                 print(f"New bestmove {m} with score {score}")
+            elif score >= self.score_checkmate:
+                return bestmoves    
             else:
                 print(f"Move {m} is not better")
                 bestmoves.append((score,m))
