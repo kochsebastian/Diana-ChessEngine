@@ -99,121 +99,163 @@ class PVS(SuperAgent):
 
 
     def generate_next_move(self,gui):
+        board = gui.chessboard
         self.board = gui.chessboard
+        print(self.build_fen(board))
+        # fen = 'rbnk-r/pPp-pp/--bp--/----P-/-PPP-P/RBNKBR white'
+        # self.set_fen(self.board,fen)
         self.copy_board = deepcopy(self.board)
         self.color = board.player_turn
-        self.score_origBoard = self.evaluateGame(self.board)
-        #print("Next move will now be generated:")
-        score,bestmove = self.PVS(self.board,self.copy_board,float("-inf"),float("inf"),4,firstsearch=True)
-        self.board.update_move(bestmove)
+        # self.score_origBoard = self.evaluateGame(self.board)
+        # time.sleep(3)
+        maxDepth = 10
+        bestmoves = []
+        for i in range(1,maxDepth):
+            # i=4
+            print(f"Depth {i}")
+            self.depth = i
+            new_bestmoves = self.pvs_root(self.board,self.copy_board,float("-inf"),float("inf"),depth=i,evaluated_moves=bestmoves)
+            if len(new_bestmoves)>0:
+                bestmoves=new_bestmoves
+            else:
+                break
+            # break
+        score,bestmove = bestmoves[0]
+        board.update_move(bestmove)
         gui.perform_move()
-        self.board.engine_is_selecting = False
-        print(self.build_fen(self.board))
+        board.engine_is_selecting = False
+        print(self.build_fen(board))
 
 
-
-    def PVS(self,orig_board,board,alpha,beta,depthleft,firstsearch=False,color=1,moves_record=[]):
-        fen = self.build_fen(board).encode('utf-8')
-        hash_fen = int(hashlib.md5(fen).hexdigest(), 16)
-        if( depthleft <= 0 ):
-            if transposition_table.get(hash_fen, None) != None:
-                print('lookup')
-                score = transposition_table[hash_fen]*color
-                return score, None
-            # score, searches = self.qsearch(orig_board,board,alpha, beta,moves_record=moves_record)
-            score=self.evaluateGame(board)*color
-            transposition_table[hash_fen] = score
-            # print(f"qseraches: {searches}")
-
-            return score, None
-        
-        if orig_board.get_time_left() < self.TIME_THRESHOLD:
-            print('time up')
-            if transposition_table.get(hash_fen, None) != None:
-                print('lookup')
-                score = transposition_table[hash_fen]*color
-                return score, None
-            score = self.evaluateGame(board)*color
-            transposition_table[hash_fen] = score
-            return score, None
-
-        moves = board.generate_valid_moves(board.player_turn)
-        if len(moves)<0:
-            return -100000*color,None
-        sorted_moves = self.sort_moves(moves,board)
-        bestmove=sorted_moves[0]
-        bestscore=float("-inf")
-        if not firstsearch:
-            # using fail soft with negamax:
-            move = sorted_moves.pop(0)
-            
-            board,before = self.do_move(board,move)
-            moves_record.append(move)
-            # moves_record=[k for k, v in Counter(moves_record).items() if v <= 1]
-            bestscore, _ = self.PVS(orig_board,board,-beta, -alpha, depthleft-1,moves_record=moves_record,color=-color)
-            bestscore=-bestscore
-            board = self.undo_move(board,move,before)
-
-            if( bestscore > alpha ):
-                if( bestscore >= beta ):
-                    return bestscore, move
-                alpha = bestscore
-
-        for m in sorted_moves :
+    def pvs_root(self,orig_board,board,alpha,beta,depth=1,evaluated_moves=[]):
+        if len(evaluated_moves)>0:
+            moves_t = list(zip(*evaluated_moves))[1]
+        else:
+            moves_t = board.generate_valid_moves(board.player_turn)
+            moves_t = self.sort_moves(moves_t,board)
+        bestmoves = []
+        moves = list(moves_t)
+        m = moves.pop(0)
+        board,before = self.do_move(board,m)
+        bestscore = -self.pvs(orig_board,board,-beta, -alpha, depth-1,color=-1,last_move=m) 
+        board = self.undo_move(board,m,before)
+        if self.time_up:
+            return bestmoves
+        if bestscore > alpha :
+            alpha = bestscore
+        bestmoves.append((bestscore,m))
+        if bestscore > self.score_checkmate:
+            return bestmoves
+        print(f"New bestmove {m} with score {bestscore}")
+        for m in moves:
+            if orig_board.get_time_left()<=self.TIME_THRESHOLD:
+                self.time_up=True
+                return bestmoves
             board,before = self.do_move(board,m)
-            moves_record.append(m)
-            # moves_record=[k for k, v in Counter(moves_record).items() if v <= 1]
-            score,_ = self.PVS(orig_board,board,-alpha-1, -alpha, depthleft-1,moves_record=moves_record,color=-color) 
-            score=-score
+            score = -self.pvs(orig_board,board,-alpha-1,-alpha,depth-1,last_move=m)
             if( score > alpha and score < beta ):
-                # research with window [alpha;beta]
-                moves_record.append(m)
-                # moves_record=[k for k, v in Counter(moves_record).items() if v <= 1]
-                score,_ = self.PVS(orig_board,board,-beta, -alpha, depthleft-1,moves_record=moves_record,color=-color)
-                score=-score
-                if score > alpha :
+                score = -self.pvs(orig_board,board,-beta, -alpha, depth-1,last_move=m) 
+                if score > alpha:
                     alpha = score
             board = self.undo_move(board,m,before)
-            if score > bestscore :
-                bestmove = m
-                if score >= beta :
-                    return score, bestmove
-                bestscore = score
-            
-        
-        return bestscore,bestmove
-        
-    def qsearch(self,orig_board,board, alpha, beta,searches=0,moves_record=[]):
-        fen = self.build_fen(board).encode('utf-8')
-        hash_fen = int(hashlib.md5(fen).hexdigest(), 16)
-        searches +=1
-        color = board.player_turn
+            if self.time_up:
+                return bestmoves
+            if score > bestscore:
+                bestscore=score
+
+            if len(bestmoves) == 0:
+                bestmoves.append((score,m))
+                print(f"New bestmove {m} with score {score}")
+            elif score > bestmoves[0][0]:
+                bestmoves.insert(0,(score,m))
+                print(f"New bestmove {m} with score {score}")
+            else:
+                print(f"Move {m} is not better")
+                bestmoves.append((score,m))
+            if bestscore > self.score_checkmate:
+                return bestmoves
+        print(f"Searched {self.counter} nodes")
+        return bestmoves
+
+    def pvs(self,orig_board,board,alpha,beta,depthleft,color=1,last_move=None):
+        global killer_moves
+        self.counter+=1
+        alphaorig = alpha
+        fen = self.build_fen(board)
+        fen, fen_color = fen.split(" ")
+        fen = fen.encode('utf-8')
+        hash_fen = int(hashlib.md5(fen).hexdigest(), self.hash_precision)
         if transposition_table.get(hash_fen, None) != None:
-            print('lookup')
-            stand_pat = transposition_table[hash_fen]
-        else:
-            stand_pat = self.evaluateGame(board)
-            transposition_table[hash_fen] = stand_pat
-        # stand_pat = self.evaluateGame(board)
-        if( stand_pat >= beta ):
-            return beta,searches
-        if( alpha < stand_pat ):
-            alpha = stand_pat
+            # print('lookup probabile')
+            tt_score,tt_depth,tt_flag,tt_fen,tt_color = transposition_table[hash_fen]
+            if tt_fen==fen:
+                tt_score = tt_score * (1 if fen_color==tt_color else -1)
+                # print('lookup possible')
+                if tt_depth >= depthleft:
+                    # print('restore')
+                    if tt_flag == 0:
+                        return tt_score
+                    elif tt_flag == -1:
+                        alpha = max(alpha,tt_score)
+                    elif tt_flag ==1:
+                        beta = min(beta,tt_score)
+                    if alpha >= beta:
+                        return tt_score
+            else:
+                print('conflict')
+        if depthleft == 0:
+            return self.qsearch(orig_board,board,alpha,beta,last_move)
+        elif orig_board.get_time_left()<=self.TIME_THRESHOLD:
+            print('time up!!')
+            self.time_up=True
+            return 0
+            # return self.evaluateGame(board) 
 
         moves = board.generate_valid_moves(board.player_turn)
-        # sorted_moves = self.sort_moves_nonquiet(moves,board)
-        for move in moves:
-            if self.is_capture_move(board,move):
-                board,before = self.do_move(board,move)
-                moves_record.append(move)
-                # moves_record=[k for k, v in Counter(moves_record).items() if v <= 1]
-                score, searches = self.qsearch(orig_board,board, -beta, -alpha, searches,moves_record=moves_record)
-                score=-score
-                board = self.undo_move(board,move,before)
-                if( score >= beta ):
-                    return beta,searches
-                if( score > alpha ):
-                    alpha = score  
-        return alpha,searches
-
+        sorted_moves_t = self.sort_moves(moves,board)
+        sorted_moves = list(sorted_moves_t)
+        if len(sorted_moves)<=0:
+            return -self.score_checkmate*(self.depth-depthleft)
+        m = sorted_moves.pop(0)
+        board,before = self.do_move(board,m)
+        bestscore = -self.pvs(orig_board,board,-beta, -alpha, depthleft-1,last_move=m) 
+        board = self.undo_move(board,m,before)
+        if bestscore > alpha :
+            if bestscore >= beta:
+                tt_score = bestscore
+                tt_depth = depthleft
+                tt_flag = -1
+                transposition_table[hash_fen] = tt_score, tt_depth, tt_flag, fen, fen_color
+                return bestscore
+            alpha = bestscore
+        for m in sorted_moves:
+            board,before = self.do_move(board,m)
+            score = -self.pvs(orig_board,board,-alpha-1,-alpha,depthleft-1,last_move=m)
+            if( score > alpha and score < beta ):
+                score = -self.pvs(orig_board,board,-beta, -alpha, depthleft-1,last_move=m) 
+                if score >alpha:
+                    alpha = score
+            board = self.undo_move(board,m,before)
+            if score > bestscore:
+                if score >= beta:
+                    tt_score = score
+                    tt_depth = depthleft
+                    tt_flag = -1
+                    transposition_table[hash_fen] = tt_score, tt_depth, tt_flag, fen, fen_color
+                    return score
+                bestscore=score
+        
+        tt_score = bestscore
+        tt_depth = depthleft
+        if bestscore <= alphaorig:
+            tt_flag = 1
+        elif bestscore >= beta:
+            tt_flag = -1
+        else:
+            tt_flag = 0
+        transposition_table[hash_fen] = tt_score, tt_depth, tt_flag, fen, fen_color
+       
+        return bestscore
+        
+   
 

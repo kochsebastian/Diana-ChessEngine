@@ -3,7 +3,10 @@ import random
 import math
 from copy import deepcopy, copy
 from studentagent import *
-from NegaMaxMoveAgent import *
+from NegaMax import *
+from NegaMaxMulti import *
+
+from NegaMaxTransposition import *
 from MiniMaxAgent import *
 from PVS import *
 from MiniMaxTransposition import *

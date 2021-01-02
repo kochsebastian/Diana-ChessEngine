@@ -10,7 +10,7 @@
             "request": "launch",
             "program": "dianachess.py",
             "console": "integratedTerminal",
-            "args": ["-w","MiniMaxTransposition","-b","MrNovice","-t","40"]
+            "args": ["-w","NegaMaxMoveAgent","-b","MrNovice","-t","500"]
 
         }
     ]

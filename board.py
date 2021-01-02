@@ -540,7 +540,7 @@ class Board(dict):
     # looks through the whole board to check for the king, outputs pos of king like this 'A5' (string)
     def get_king_position(self, color):
         for pos in self.keys():
-            if self.is_king(self[pos]) and self[pos].color == color:
+            if self.is_king(self[pos]) and self[pos].color == color: 
                 return pos
 
     def get_king(self, color):
